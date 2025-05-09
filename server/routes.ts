@@ -98,20 +98,610 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Route to serve Vue app
+  // Setup a basic route to serve our Vue app from the Vue directory
   app.get('/vue', (req: Request, res: Response) => {
-    const vueIndexPath = path.join(process.cwd(), 'vue-csv-viewer', 'index.html');
-    res.sendFile(vueIndexPath);
-  });
-  
-  // Serve static files for Vue app
-  app.use('/vue-assets', (req: Request, res: Response, next: NextFunction) => {
-    const filePath = path.join(process.cwd(), 'vue-csv-viewer', req.path);
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      next();
-    }
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+          <title>Vue CSV Viewer - Easy CSV Data Exploration</title>
+          <meta name="description" content="A powerful Vue.js CSV viewer that allows you to upload, view, sort, filter, and analyze your CSV data in a user-friendly interface.">
+          <!-- Favicon -->
+          <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233B82F6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /%3E%3C/svg%3E">
+          <style>
+            :root {
+              --primary-color: #3b82f6;
+              --primary-hover: #2563eb;
+              --secondary-color: #e5e7eb;
+              --text-color: #1f2937;
+              --text-light: #6b7280;
+              --white: #ffffff;
+              --danger: #ef4444;
+              --success: #10b981;
+              --border-color: #e5e7eb;
+              --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            }
+            
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+            
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: var(--text-color);
+              line-height: 1.5;
+              background-color: #f9fafb;
+            }
+            
+            .container {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+            
+            header {
+              background-color: var(--white);
+              box-shadow: var(--shadow);
+              padding: 1rem;
+            }
+            
+            .header-content {
+              display: flex;
+              align-items: center;
+              max-width: 1200px;
+              margin: 0 auto;
+              width: 100%;
+              padding: 0 1rem;
+            }
+            
+            .logo-icon {
+              width: 1.75rem;
+              height: 1.75rem;
+              color: var(--primary-color);
+              margin-right: 0.75rem;
+            }
+            
+            h1 {
+              font-size: 1.5rem;
+              font-weight: 600;
+            }
+            
+            main {
+              flex: 1;
+              max-width: 1200px;
+              width: 100%;
+              margin: 0 auto;
+              padding: 1.5rem 1rem;
+            }
+            
+            .card {
+              background-color: var(--white);
+              border-radius: 0.5rem;
+              box-shadow: var(--shadow);
+              padding: 2rem;
+              margin-bottom: 1.5rem;
+            }
+            
+            .file-upload {
+              border: 2px dashed var(--border-color);
+              border-radius: 0.5rem;
+              padding: 2rem;
+              text-align: center;
+              cursor: pointer;
+              transition: all 0.2s ease;
+            }
+            
+            .file-upload:hover {
+              border-color: var(--primary-color);
+            }
+            
+            .upload-icon {
+              width: 3rem;
+              height: 3rem;
+              color: #9ca3af;
+              margin: 0 auto;
+            }
+            
+            .hidden-input {
+              display: none;
+            }
+            
+            .btn {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 0.375rem;
+              padding: 0.5rem 1rem;
+              font-weight: 500;
+              font-size: 0.875rem;
+              cursor: pointer;
+              transition: all 0.15s ease;
+            }
+            
+            .btn-primary {
+              background-color: var(--primary-color);
+              color: var(--white);
+              border: 1px solid var(--primary-color);
+            }
+            
+            .btn-primary:hover {
+              background-color: var(--primary-hover);
+            }
+            
+            footer {
+              background-color: var(--white);
+              border-top: 1px solid var(--border-color);
+              padding: 1rem;
+              text-align: center;
+              color: var(--text-light);
+              font-size: 0.875rem;
+            }
+            
+            .data-grid {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 1rem;
+            }
+            
+            .data-grid th {
+              background-color: #f9fafb;
+              font-weight: 500;
+              text-align: left;
+              padding: 0.75rem 1rem;
+              border-bottom: 1px solid var(--border-color);
+            }
+            
+            .data-grid td {
+              padding: 0.75rem 1rem;
+              border-bottom: 1px solid var(--border-color);
+            }
+            
+            .data-grid tr:hover {
+              background-color: #f9fafb;
+            }
+            
+            .controls {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 1rem;
+              margin-bottom: 1rem;
+            }
+            
+            .search-input {
+              flex: 1;
+              padding: 0.5rem 0.75rem;
+              border: 1px solid var(--border-color);
+              border-radius: 0.375rem;
+              font-size: 0.875rem;
+            }
+            
+            .pagination {
+              display: flex;
+              justify-content: center;
+              margin-top: 1rem;
+            }
+            
+            .pagination button {
+              padding: 0.5rem 0.75rem;
+              border: 1px solid var(--border-color);
+              background: var(--white);
+              cursor: pointer;
+            }
+            
+            .pagination button.active {
+              background-color: var(--primary-color);
+              color: var(--white);
+              border-color: var(--primary-color);
+            }
+            
+            @media (max-width: 640px) {
+              h1 {
+                font-size: 1.25rem;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <header>
+              <div class="header-content">
+                <svg xmlns="http://www.w3.org/2000/svg" class="logo-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h1>Vue CSV Viewer</h1>
+              </div>
+            </header>
+            <main>
+              <div class="card">
+                <h2>Upload CSV File</h2>
+                <p style="margin-bottom: 1rem;">Upload a CSV file to visualize, sort, and filter your data.</p>
+                
+                <div class="file-upload" id="file-drop-zone">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p style="margin-top: 0.5rem;">
+                    Drag and drop your CSV file here, or <span style="color: var(--primary-color); font-weight: 500; cursor: pointer;">browse</span>
+                    <input id="file-input" type="file" accept=".csv" class="hidden-input">
+                  </p>
+                  <p style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-light);">Supports CSV files up to 10MB</p>
+                </div>
+                
+                <div id="file-info" style="display: none; margin-top: 1rem;"></div>
+                <div id="loading-indicator" style="display: none; margin-top: 1rem; text-align: center;">
+                  <div style="display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid var(--primary-color); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+                  <p>Processing file...</p>
+                </div>
+                <div id="error-message" style="display: none; margin-top: 1rem; padding: 1rem; background-color: #fef2f2; border-radius: 0.375rem; color: #b91c1c;"></div>
+              </div>
+              
+              <div id="data-view" style="display: none;">
+                <div class="card">
+                  <div class="controls">
+                    <input type="text" id="search-input" class="search-input" placeholder="Search in all columns...">
+                    <button id="download-btn" class="btn btn-primary">Download CSV</button>
+                  </div>
+                  
+                  <div id="table-container" style="overflow-x: auto;">
+                    <!-- Table will be inserted here -->
+                  </div>
+                  
+                  <div id="pagination" class="pagination">
+                    <!-- Pagination will be inserted here -->
+                  </div>
+                </div>
+              </div>
+            </main>
+            <footer>
+              <p>Vue CSV Viewer | Browser-based CSV Analysis Tool</p>
+            </footer>
+          </div>
+          
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              // State variables
+              let csvData = [];
+              let currentFile = null;
+              let columns = [];
+              let currentPage = 1;
+              let rowsPerPage = 10;
+              let searchTerm = '';
+              
+              // DOM Elements
+              const fileDropZone = document.getElementById('file-drop-zone');
+              const fileInput = document.getElementById('file-input');
+              const fileInfo = document.getElementById('file-info');
+              const loadingIndicator = document.getElementById('loading-indicator');
+              const errorMessage = document.getElementById('error-message');
+              const dataView = document.getElementById('data-view');
+              const tableContainer = document.getElementById('table-container');
+              const paginationElement = document.getElementById('pagination');
+              const searchInput = document.getElementById('search-input');
+              const downloadBtn = document.getElementById('download-btn');
+              
+              // Event Listeners
+              fileDropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+              });
+              
+              fileDropZone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--primary-color)';
+                this.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+              });
+              
+              fileDropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--border-color)';
+                this.style.backgroundColor = 'transparent';
+              });
+              
+              fileDropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'var(--border-color)';
+                this.style.backgroundColor = 'transparent';
+                
+                if (e.dataTransfer.files.length > 0) {
+                  handleFile(e.dataTransfer.files[0]);
+                }
+              });
+              
+              fileDropZone.addEventListener('click', function() {
+                fileInput.click();
+              });
+              
+              fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                  handleFile(this.files[0]);
+                }
+              });
+              
+              searchInput.addEventListener('input', function() {
+                searchTerm = this.value.toLowerCase();
+                currentPage = 1;
+                renderTable();
+              });
+              
+              downloadBtn.addEventListener('click', function() {
+                downloadCSV();
+              });
+              
+              // Functions
+              function handleFile(file) {
+                // Check if file is CSV
+                if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                  showError('Only CSV files are allowed');
+                  return;
+                }
+                
+                currentFile = file;
+                showLoading();
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Upload file
+                fetch('/api/csv/upload', {
+                  method: 'POST',
+                  body: formData
+                })
+                .then(response => {
+                  if (!response.ok) {
+                    return response.json().then(data => {
+                      throw new Error(data.message || 'Failed to upload file');
+                    });
+                  }
+                  return response.json();
+                })
+                .then(fileData => {
+                  // Get file content
+                  return fetch(\`/api/csv/\${fileData.filename}\`);
+                })
+                .then(response => {
+                  if (!response.ok) {
+                    return response.json().then(data => {
+                      throw new Error(data.message || 'Failed to read file content');
+                    });
+                  }
+                  return response.json();
+                })
+                .then(data => {
+                  const content = data.content;
+                  parseCSV(content);
+                })
+                .catch(error => {
+                  showError(error.message);
+                });
+              }
+              
+              function parseCSV(csvContent) {
+                // Simple CSV parser (can be replaced with a more robust one)
+                const lines = csvContent.split('\\n');
+                const headers = lines[0].split(',').map(header => header.trim());
+                
+                const data = [];
+                for (let i = 1; i < lines.length; i++) {
+                  const line = lines[i].trim();
+                  if (line) {
+                    const values = line.split(',');
+                    const row = {};
+                    headers.forEach((header, index) => {
+                      row[header] = values[index] ? values[index].trim() : '';
+                    });
+                    data.push(row);
+                  }
+                }
+                
+                csvData = data;
+                columns = headers;
+                currentPage = 1;
+                
+                showFileInfo();
+                renderTable();
+                hideLoading();
+                dataView.style.display = 'block';
+              }
+              
+              function renderTable() {
+                // Filter data based on search term
+                const filteredData = csvData.filter(row => 
+                  Object.values(row).some(value => 
+                    String(value).toLowerCase().includes(searchTerm)
+                  )
+                );
+                
+                // Calculate pagination
+                const totalPages = Math.max(1, Math.ceil(filteredData.length / rowsPerPage));
+                const startIndex = (currentPage - 1) * rowsPerPage;
+                const paginatedData = filteredData.slice(startIndex, startIndex + rowsPerPage);
+                
+                // Create table
+                let tableHTML = '<table class="data-grid">';
+                
+                // Table header
+                tableHTML += '<thead><tr>';
+                columns.forEach(column => {
+                  tableHTML += \`<th>\${column}</th>\`;
+                });
+                tableHTML += '</tr></thead>';
+                
+                // Table body
+                tableHTML += '<tbody>';
+                if (paginatedData.length === 0) {
+                  tableHTML += \`<tr><td colspan="\${columns.length}" style="text-align: center; padding: 2rem;">No data found</td></tr>\`;
+                } else {
+                  paginatedData.forEach(row => {
+                    tableHTML += '<tr>';
+                    columns.forEach(column => {
+                      tableHTML += \`<td>\${row[column] || ''}</td>\`;
+                    });
+                    tableHTML += '</tr>';
+                  });
+                }
+                tableHTML += '</tbody>';
+                tableHTML += '</table>';
+                
+                tableContainer.innerHTML = tableHTML;
+                renderPagination(totalPages);
+              }
+              
+              function renderPagination(totalPages) {
+                let paginationHTML = '';
+                
+                if (totalPages > 1) {
+                  // Previous button
+                  paginationHTML += \`<button \${currentPage === 1 ? 'disabled' : ''} onclick="changePage(\${currentPage - 1})">Previous</button>\`;
+                  
+                  // Page numbers
+                  const maxVisiblePages = 5;
+                  if (totalPages <= maxVisiblePages) {
+                    for (let i = 1; i <= totalPages; i++) {
+                      paginationHTML += \`<button class="\${currentPage === i ? 'active' : ''}" onclick="changePage(\${i})">\${i}</button>\`;
+                    }
+                  } else {
+                    // Always show first page
+                    paginationHTML += \`<button class="\${currentPage === 1 ? 'active' : ''}" onclick="changePage(1)">1</button>\`;
+                    
+                    // Calculate range around current page
+                    const leftBound = Math.max(2, currentPage - 1);
+                    const rightBound = Math.min(totalPages - 1, currentPage + 1);
+                    
+                    // Add ellipsis after first page if needed
+                    if (leftBound > 2) {
+                      paginationHTML += \`<button disabled>...</button>\`;
+                    }
+                    
+                    // Add pages around current page
+                    for (let i = leftBound; i <= rightBound; i++) {
+                      paginationHTML += \`<button class="\${currentPage === i ? 'active' : ''}" onclick="changePage(\${i})">\${i}</button>\`;
+                    }
+                    
+                    // Add ellipsis before last page if needed
+                    if (rightBound < totalPages - 1) {
+                      paginationHTML += \`<button disabled>...</button>\`;
+                    }
+                    
+                    // Always show last page
+                    paginationHTML += \`<button class="\${currentPage === totalPages ? 'active' : ''}" onclick="changePage(\${totalPages})">\${totalPages}</button>\`;
+                  }
+                  
+                  // Next button
+                  paginationHTML += \`<button \${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(\${currentPage + 1})">Next</button>\`;
+                }
+                
+                paginationElement.innerHTML = paginationHTML;
+                
+                // Define changePage function in global scope
+                window.changePage = function(page) {
+                  currentPage = page;
+                  renderTable();
+                };
+              }
+              
+              function showFileInfo() {
+                if (currentFile) {
+                  fileInfo.innerHTML = \`
+                    <div style="display: flex; align-items: center;">
+                      <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: var(--primary-color); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span style="font-weight: 500;">\${currentFile.name}</span>
+                      <span style="color: var(--text-light); margin-left: 0.5rem;">(\${formatFileSize(currentFile.size)})</span>
+                      <button style="margin-left: 0.5rem; background: none; border: none; cursor: pointer; color: var(--text-light);" onclick="removeFile()">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  \`;
+                  fileInfo.style.display = 'block';
+                  
+                  // Define removeFile function in global scope
+                  window.removeFile = function() {
+                    currentFile = null;
+                    csvData = [];
+                    columns = [];
+                    fileInfo.style.display = 'none';
+                    dataView.style.display = 'none';
+                    fileInput.value = '';
+                  };
+                }
+              }
+              
+              function showLoading() {
+                loadingIndicator.style.display = 'block';
+                errorMessage.style.display = 'none';
+              }
+              
+              function hideLoading() {
+                loadingIndicator.style.display = 'none';
+              }
+              
+              function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                loadingIndicator.style.display = 'none';
+              }
+              
+              function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+              }
+              
+              function downloadCSV() {
+                if (csvData.length === 0) return;
+                
+                let csvContent = columns.join(',') + '\\n';
+                
+                // Filter data based on search term
+                const filteredData = csvData.filter(row => 
+                  Object.values(row).some(value => 
+                    String(value).toLowerCase().includes(searchTerm)
+                  )
+                );
+                
+                filteredData.forEach(row => {
+                  const rowData = columns.map(column => row[column] || '');
+                  csvContent += rowData.join(',') + '\\n';
+                });
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', \`\${currentFile.name.split('.')[0] || 'data'}_filtered.csv\`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }
+              
+              // Add CSS animation for spinner
+              const style = document.createElement('style');
+              style.textContent = \`
+                @keyframes spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+              \`;
+              document.head.appendChild(style);
+            });
+          </script>
+        </body>
+      </html>
+    `);
   });
   
   const httpServer = createServer(app);
