@@ -708,8 +708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 csvData = data;
                 columns = headers;
                 // Reset column management settings for new file
-                visibleColumns = [...headers]; // Start with all columns visible
                 columnOrder = [...headers]; // Start with original order
+                visibleColumns = [...headers]; // Start with all columns visible
                 currentPage = 1;
                 
                 showFileInfo();
