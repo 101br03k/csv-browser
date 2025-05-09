@@ -152,7 +152,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .header-content {
               display: flex;
               align-items: center;
-              max-width: 1200px;
+              max-width: 90%;
+              min-width: 1200px;
               margin: 0 auto;
               width: 100%;
               padding: 0 1rem;
@@ -172,7 +173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             main {
               flex: 1;
-              max-width: 1200px;
+              max-width: 90%;
+              min-width: 1200px;
               width: 100%;
               margin: 0 auto;
               padding: 1.5rem 1rem;
@@ -415,9 +417,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               border-color: var(--primary-color);
             }
             
-            @media (max-width: 640px) {
+            @media (max-width: 1200px) {
+              .header-content, main {
+                min-width: auto;
+                max-width: 95%;
+              }
+              
               h1 {
                 font-size: 1.25rem;
+              }
+            }
+            
+            @media (max-width: 640px) {
+              .header-content, main {
+                max-width: 100%;
+                padding: 0 0.5rem;
+              }
+              
+              h1 {
+                font-size: 1.25rem;
+              }
+              
+              .card {
+                padding: 1rem;
               }
             }
           </style>
