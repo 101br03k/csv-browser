@@ -685,6 +685,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 csvData = data;
                 columns = headers;
+                // Reset column management settings for new file
+                visibleColumns = [...headers]; // Start with all columns visible
+                columnOrder = [...headers]; // Start with original order
                 currentPage = 1;
                 
                 showFileInfo();
@@ -706,12 +709,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const startIndex = (currentPage - 1) * rowsPerPage;
                 const paginatedData = filteredData.slice(startIndex, startIndex + rowsPerPage);
                 
+                // Get columns to display in the correct order
+                const columnsToDisplay = (columnOrder.length > 0 ? columnOrder : columns)
+                  .filter(column => visibleColumns.length === 0 || visibleColumns.includes(column));
+                
                 // Create table
                 let tableHTML = '<table class="data-grid">';
                 
                 // Table header
                 tableHTML += '<thead><tr>';
-                columns.forEach(column => {
+                columnsToDisplay.forEach(column => {
                   tableHTML += \`<th>\${column}</th>\`;
                 });
                 tableHTML += '</tr></thead>';
@@ -719,11 +726,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Table body
                 tableHTML += '<tbody>';
                 if (paginatedData.length === 0) {
-                  tableHTML += \`<tr><td colspan="\${columns.length}" style="text-align: center; padding: 2rem;">No data found</td></tr>\`;
+                  tableHTML += \`<tr><td colspan="\${columnsToDisplay.length}" style="text-align: center; padding: 2rem;">No data found</td></tr>\`;
                 } else {
                   paginatedData.forEach(row => {
                     tableHTML += '<tr>';
-                    columns.forEach(column => {
+                    columnsToDisplay.forEach(column => {
                       tableHTML += \`<td>\${row[column] || ''}</td>\`;
                     });
                     tableHTML += '</tr>';
@@ -847,7 +854,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               function downloadCSV() {
                 if (csvData.length === 0) return;
                 
-                let csvContent = columns.join(',') + '\\n';
+                // Get columns to display in the correct order
+                const columnsToDisplay = (columnOrder.length > 0 ? columnOrder : columns)
+                  .filter(column => visibleColumns.length === 0 || visibleColumns.includes(column));
+                
+                let csvContent = columnsToDisplay.join(',') + '\\n';
                 
                 // Filter data based on search term
                 const filteredData = csvData.filter(row => 
@@ -857,7 +868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 );
                 
                 filteredData.forEach(row => {
-                  const rowData = columns.map(column => row[column] || '');
+                  const rowData = columnsToDisplay.map(column => row[column] || '');
                   csvContent += rowData.join(',') + '\\n';
                 });
                 
