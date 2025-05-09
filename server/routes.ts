@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
@@ -96,6 +96,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       return res.status(500).json({ message: 'An unexpected error occurred' });
     }
+  });
+  
+  // Route to serve Vue app
+  app.get('/vue', (req: Request, res: Response) => {
+    const vueIndexPath = path.join(process.cwd(), 'client', 'vue-index.html');
+    res.sendFile(vueIndexPath);
   });
   
   const httpServer = createServer(app);
