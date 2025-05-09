@@ -3,7 +3,7 @@ import FileUpload from "@/components/FileUpload";
 import DataTable from "@/components/DataTable";
 import DataControls from "@/components/DataControls";
 import DataStatistics from "@/components/DataStatistics";
-import { useCSVData } from "@/hooks/useCSVData";
+import { useCSVData, CSVColumn } from "@/hooks/useCSVData";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
 
@@ -35,7 +35,12 @@ export default function Home() {
     totalPages,
     statistics,
     downloadCSV,
+    setColumns,
   } = useCSVData();
+
+  const onReorderColumns = (newColumns: CSVColumn[]) => {
+    setColumns(newColumns);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans text-gray-800">
@@ -104,6 +109,7 @@ export default function Home() {
               onSetColumnFilter={setColumnFilter}
               onRemoveFilter={removeFilter}
               onClearAllFilters={clearAllFilters}
+              onReorderColumns={onReorderColumns}
             />
 
             {/* Data Table */}

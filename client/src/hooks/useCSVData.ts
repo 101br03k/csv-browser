@@ -322,5 +322,6 @@ export function useCSVData() {
     totalPages,
     statistics,
     downloadCSV,
+    setColumns,
   };
 }

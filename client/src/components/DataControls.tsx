@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Layers, ChevronDown, X } from "lucide-react";
+import { Search, Layers, ChevronDown, X, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CSVColumn, ColumnFilter } from "@/hooks/useCSVData";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 interface DataControlsProps {
   searchTerm: string;
@@ -36,7 +37,8 @@ export default function DataControls({
   onSetColumnFilter,
   onRemoveFilter,
   onClearAllFilters,
-}: DataControlsProps) {
+  onReorderColumns,
+}: DataControlsProps & { onReorderColumns: (newColumns: CSVColumn[]) => void }) {
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +67,16 @@ export default function DataControls({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [dropdownRef]);
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const reorderedColumns = Array.from(columns);
+    const [removed] = reorderedColumns.splice(result.source.index, 1);
+    reorderedColumns.splice(result.destination.index, 0, removed);
+
+    onReorderColumns(reorderedColumns);
+  };
 
   return (
     <Card>
@@ -114,21 +126,37 @@ export default function DataControls({
                       </Label>
                     </div>
                   </div>
-                  
-                  {columns.map((column) => (
-                    <div key={column.id} className="px-4 py-2 hover:bg-gray-100">
-                      <div className="flex items-center">
-                        <Checkbox
-                          id={`column-${column.id}`}
-                          checked={visibleColumns.includes(column.id)}
-                          onCheckedChange={() => onToggleColumn(column.id)}
-                        />
-                        <Label htmlFor={`column-${column.id}`} className="ml-2 text-sm text-gray-900">
-                          {column.name}
-                        </Label>
-                      </div>
-                    </div>
-                  ))}
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="columns" direction="vertical">
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps}>
+                          {columns.map((column, index) => (
+                            <Draggable key={column.id} draggableId={column.id} index={index}>
+                              {(provided) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="flex items-center justify-between mb-2"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <GripVertical className="h-4 w-4 text-gray-500 cursor-grab" />
+                                    <Label htmlFor={`column-${column.id}`}>{column.name}</Label>
+                                  </div>
+                                  <Checkbox
+                                    id={`column-${column.id}`}
+                                    checked={visibleColumns.includes(column.id)}
+                                    onCheckedChange={() => onToggleColumn(column.id)}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 </div>
               </div>
             )}
