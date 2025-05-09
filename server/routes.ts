@@ -871,6 +871,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 document.body.removeChild(link);
               }
               
+              // Column management functions
+              function openColumnSettingsModal() {
+                // Initialize or update column list
+                refreshColumnList();
+                
+                // Show modal
+                columnSettingsModal.style.display = 'flex';
+              }
+              
+              function refreshColumnList() {
+                // Clear current list
+                columnList.innerHTML = '';
+                
+                // Get columns to display
+                const columnsToDisplay = columnOrder.length > 0 ? columnOrder : columns;
+                
+                // Create items for each column
+                columnsToDisplay.forEach((column, index) => {
+                  const isVisible = visibleColumns.length === 0 || visibleColumns.includes(column);
+                  
+                  const li = document.createElement('li');
+                  li.className = 'column-item';
+                  li.draggable = true;
+                  li.dataset.column = column;
+                  
+                  // Add drag handle
+                  const dragHandle = document.createElement('span');
+                  dragHandle.className = 'drag-handle';
+                  dragHandle.innerHTML = '&#9776;'; // hamburger icon
+                  li.appendChild(dragHandle);
+                  
+                  // Add checkbox and label
+                  const label = document.createElement('label');
+                  
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.checked = isVisible;
+                  checkbox.addEventListener('change', function() {
+                    // This will be processed when applying changes
+                  });
+                  
+                  label.appendChild(checkbox);
+                  label.appendChild(document.createTextNode(column));
+                  
+                  li.appendChild(label);
+                  columnList.appendChild(li);
+                });
+                
+                // Add drag and drop functionality
+                setupDragAndDrop();
+              }
+              
+              function setupDragAndDrop() {
+                const items = columnList.querySelectorAll('.column-item');
+                
+                items.forEach(item => {
+                  item.addEventListener('dragstart', handleDragStart);
+                  item.addEventListener('dragover', handleDragOver);
+                  item.addEventListener('dragleave', handleDragLeave);
+                  item.addEventListener('drop', handleDrop);
+                  item.addEventListener('dragend', handleDragEnd);
+                });
+              }
+              
+              let draggedItem = null;
+              
+              function handleDragStart(e) {
+                draggedItem = this;
+                this.style.opacity = '0.4';
+                
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+              }
+              
+              function handleDragOver(e) {
+                if (e.preventDefault) {
+                  e.preventDefault();
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+                this.classList.add('over');
+                
+                return false;
+              }
+              
+              function handleDragLeave(e) {
+                this.classList.remove('over');
+              }
+              
+              function handleDrop(e) {
+                if (e.stopPropagation) {
+                  e.stopPropagation();
+                }
+                
+                if (draggedItem !== this) {
+                  // Get the positions
+                  const items = Array.from(columnList.querySelectorAll('.column-item'));
+                  const fromIndex = items.indexOf(draggedItem);
+                  const toIndex = items.indexOf(this);
+                  
+                  // Re-order in DOM
+                  if (fromIndex < toIndex) {
+                    columnList.insertBefore(draggedItem, this.nextSibling);
+                  } else {
+                    columnList.insertBefore(draggedItem, this);
+                  }
+                }
+                
+                return false;
+              }
+              
+              function handleDragEnd(e) {
+                this.style.opacity = '1';
+                
+                columnList.querySelectorAll('.column-item').forEach(item => {
+                  item.classList.remove('over');
+                });
+              }
+              
+              function applyColumnChanges() {
+                // Get current order from UI
+                const items = columnList.querySelectorAll('.column-item');
+                
+                // Update column order
+                columnOrder = Array.from(items).map(item => item.dataset.column);
+                
+                // Update visible columns
+                visibleColumns = Array.from(items)
+                  .filter(item => item.querySelector('input[type="checkbox"]').checked)
+                  .map(item => item.dataset.column);
+                
+                // Re-render table with new settings
+                renderTable();
+              }
+              
               // Add CSS animation for spinner
               const style = document.createElement('style');
               style.textContent = \`
