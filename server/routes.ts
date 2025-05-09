@@ -271,12 +271,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
               margin-bottom: 1rem;
             }
             
+            .control-buttons {
+              display: flex;
+              gap: 0.5rem;
+              align-items: center;
+            }
+            
             .search-input {
               flex: 1;
               padding: 0.5rem 0.75rem;
               border: 1px solid var(--border-color);
               border-radius: 0.375rem;
               font-size: 0.875rem;
+            }
+            
+            .select-input {
+              padding: 0.5rem;
+              border: 1px solid var(--border-color);
+              border-radius: 0.375rem;
+              background-color: var(--white);
+              font-size: 0.875rem;
+            }
+            
+            /* Modal styles */
+            .modal {
+              display: none;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background-color: rgba(0, 0, 0, 0.5);
+              z-index: 100;
+              justify-content: center;
+              align-items: center;
+            }
+            
+            .modal-content {
+              background-color: var(--white);
+              border-radius: 0.5rem;
+              width: 90%;
+              max-width: 500px;
+              max-height: 80vh;
+              display: flex;
+              flex-direction: column;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            
+            .modal-header {
+              padding: 1rem;
+              border-bottom: 1px solid var(--border-color);
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .modal-body {
+              padding: 1rem;
+              overflow-y: auto;
+              flex-grow: 1;
+            }
+            
+            .modal-footer {
+              padding: 1rem;
+              border-top: 1px solid var(--border-color);
+              display: flex;
+              justify-content: flex-end;
+            }
+            
+            .close-btn {
+              background: none;
+              border: none;
+              font-size: 1.5rem;
+              line-height: 1;
+              cursor: pointer;
+              color: var(--text-light);
+            }
+            
+            .column-list {
+              list-style: none;
+              padding: 0;
+              margin: 1rem 0;
+            }
+            
+            .column-item {
+              display: flex;
+              align-items: center;
+              padding: 0.5rem;
+              border: 1px solid var(--border-color);
+              margin-bottom: 0.5rem;
+              background-color: var(--white);
+              border-radius: 0.25rem;
+              cursor: move;
+            }
+            
+            .column-item:hover {
+              background-color: #f9fafb;
+            }
+            
+            .column-item .drag-handle {
+              margin-right: 0.5rem;
+              color: var(--text-light);
+              cursor: grab;
+            }
+            
+            .column-item label {
+              display: flex;
+              align-items: center;
+              margin-left: 0.5rem;
+              flex-grow: 1;
+            }
+            
+            .column-item input[type="checkbox"] {
+              margin-right: 0.5rem;
+            }
+            
+            .btn-secondary {
+              background-color: var(--white);
+              color: var(--text-color);
+              border: 1px solid var(--border-color);
+            }
+            
+            .btn-secondary:hover {
+              background-color: var(--secondary-color);
             }
             
             .pagination {
@@ -343,7 +460,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <div class="card">
                   <div class="controls">
                     <input type="text" id="search-input" class="search-input" placeholder="Search in all columns...">
+                    <div class="control-buttons">
+                      <button id="column-settings-btn" class="btn btn-secondary">Column Settings</button>
+                      <select id="rows-per-page" class="select-input">
+                        <option value="10">10 rows</option>
+                        <option value="25">25 rows</option>
+                        <option value="50">50 rows</option>
+                        <option value="100">100 rows</option>
+                      </select>
+                    </div>
                     <button id="download-btn" class="btn btn-primary">Download CSV</button>
+                  </div>
+                  
+                  <!-- Column Settings Modal -->
+                  <div id="column-settings-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h3>Column Settings</h3>
+                        <button id="close-modal-btn" class="close-btn">&times;</button>
+                      </div>
+                      <div class="modal-body">
+                        <p>Drag and drop to reorder columns. Toggle visibility with checkboxes.</p>
+                        <ul id="column-list" class="column-list">
+                          <!-- Column items will be added here dynamically -->
+                        </ul>
+                      </div>
+                      <div class="modal-footer">
+                        <button id="apply-columns-btn" class="btn btn-primary">Apply Changes</button>
+                      </div>
+                    </div>
                   </div>
                   
                   <div id="table-container" style="overflow-x: auto;">
@@ -367,6 +512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               let csvData = [];
               let currentFile = null;
               let columns = [];
+              let visibleColumns = []; // Track visible columns
+              let columnOrder = []; // Track column order
               let currentPage = 1;
               let rowsPerPage = 10;
               let searchTerm = '';
@@ -382,6 +529,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const paginationElement = document.getElementById('pagination');
               const searchInput = document.getElementById('search-input');
               const downloadBtn = document.getElementById('download-btn');
+              const rowsPerPageSelect = document.getElementById('rows-per-page');
+              const columnSettingsBtn = document.getElementById('column-settings-btn');
+              const columnSettingsModal = document.getElementById('column-settings-modal');
+              const closeModalBtn = document.getElementById('close-modal-btn');
+              const columnList = document.getElementById('column-list');
+              const applyColumnsBtn = document.getElementById('apply-columns-btn');
               
               // Event Listeners
               fileDropZone.addEventListener('dragover', function(e) {
@@ -432,6 +585,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               downloadBtn.addEventListener('click', function() {
                 downloadCSV();
+              });
+              
+              // Rows per page select event
+              rowsPerPageSelect.addEventListener('change', function() {
+                rowsPerPage = parseInt(this.value);
+                currentPage = 1;
+                renderTable();
+              });
+              
+              // Column settings button event
+              columnSettingsBtn.addEventListener('click', function() {
+                openColumnSettingsModal();
+              });
+              
+              // Close modal button event
+              closeModalBtn.addEventListener('click', function() {
+                columnSettingsModal.style.display = 'none';
+              });
+              
+              // Click outside modal to close
+              window.addEventListener('click', function(event) {
+                if (event.target === columnSettingsModal) {
+                  columnSettingsModal.style.display = 'none';
+                }
+              });
+              
+              // Apply column changes event
+              applyColumnsBtn.addEventListener('click', function() {
+                applyColumnChanges();
+                columnSettingsModal.style.display = 'none';
               });
               
               // Functions
