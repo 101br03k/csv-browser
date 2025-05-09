@@ -100,8 +100,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Route to serve Vue app
   app.get('/vue', (req: Request, res: Response) => {
-    const vueIndexPath = path.join(process.cwd(), 'client', 'vue-index.html');
+    const vueIndexPath = path.join(process.cwd(), 'vue-csv-viewer', 'index.html');
     res.sendFile(vueIndexPath);
+  });
+  
+  // Serve static files for Vue app
+  app.use('/vue-assets', (req: Request, res: Response, next: NextFunction) => {
+    const filePath = path.join(process.cwd(), 'vue-csv-viewer', req.path);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      next();
+    }
   });
   
   const httpServer = createServer(app);
