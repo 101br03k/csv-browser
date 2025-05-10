@@ -106,8 +106,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-          <title>Vue CSV Viewer - Easy CSV Data Exploration</title>
-          <meta name="description" content="A powerful Vue.js CSV viewer that allows you to upload, view, sort, filter, and analyze your CSV data in a user-friendly interface.">
+          <title>Vue CSV Browser</title>
+          <meta name="description" content="A powerful Vue.js CSV Browser that allows you to upload, view, sort, filter, and analyze your CSV data in a user-friendly interface.">
           <!-- Favicon -->
           <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233B82F6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /%3E%3C/svg%3E">
           <style>
@@ -451,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <svg xmlns="http://www.w3.org/2000/svg" class="logo-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <h1>Vue CSV Viewer</h1>
+                <h1>Vue CSV Browser</h1>
               </div>
             </header>
             <main>
@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </div>
             </main>
             <footer>
-              <p>Vue CSV Viewer | Browser-based CSV Analysis Tool</p>
+              <p>Vue CSV Browser | Browser-based CSV Analysis Tool</p>
             </footer>
           </div>
           
