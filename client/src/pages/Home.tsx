@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import FileUpload from "@/components/FileUpload";
 import DataTable from "@/components/DataTable";
 import DataControls from "@/components/DataControls";
@@ -38,6 +38,13 @@ export default function Home() {
     setColumns,
   } = useCSVData();
 
+  const [firstUploadDone, setFirstUploadDone] = useState(false);
+
+  const handleFirstFileUpload = (file: File) => {
+    handleFileUpload(file);
+    setFirstUploadDone(true);
+  };
+
   const onReorderColumns = (newColumns: CSVColumn[]) => {
     setColumns(newColumns);
   };
@@ -53,7 +60,7 @@ export default function Home() {
             </svg>
             CSV Browser
           </h1>
-          <div>
+          <div className="flex items-center space-x-4">
             <Button
               onClick={downloadCSV}
               disabled={!csvData.length}
@@ -62,21 +69,31 @@ export default function Home() {
               <FileDown className="h-4 w-4 mr-2" />
               Download
             </Button>
+            {firstUploadDone && (
+              <Button
+                onClick={() => document.getElementById('file-upload-input')?.click()}
+                className="inline-flex items-center text-white bg-gray-700 px-4 py-2 rounded hover:bg-gray-800"
+              >
+                Upload Another CSV
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* File Upload Section */}
-        <div className="mb-8">
-          <FileUpload
-            onFileUpload={handleFileUpload}
-            currentFile={file}
-            onRemoveFile={removeFile}
-            loading={loading}
-            error={error}
-          />
-        </div>
+        {!firstUploadDone && (
+          <div className="mb-8">
+            <FileUpload
+              onFileUpload={handleFirstFileUpload}
+              currentFile={file}
+              onRemoveFile={removeFile}
+              loading={loading}
+              error={error}
+            />
+          </div>
+        )}
 
         {/* No Data State */}
         {!csvData.length && !loading && (
