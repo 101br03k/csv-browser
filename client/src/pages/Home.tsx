@@ -146,6 +146,17 @@ export default function Home() {
             />
           </div>
         )}
+        <input
+          id="file-upload-input"
+          type="file"
+          accept=".csv"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.[0]) {
+              handleFirstFileUpload(e.target.files[0]);
+            }
+          }}
+        />
       </main>
 
       {/* Footer */}
