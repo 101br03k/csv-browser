@@ -1,11 +1,11 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import CSVViewer from './components/CSVViewer.vue'
+import CSVBrowser from './components/CSVBrowser.vue'
 
 // Create routes
 const routes = [
-  { path: '/', component: CSVViewer }
+  { path: '/', component: CSVBrowser }
 ]
 
 // Create router
