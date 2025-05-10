@@ -1,8 +1,11 @@
+version: '3.8'
+
 services:
-  nginx-up-page:
-    image: ghcr.io/101br03k/csv-builder
-    restart: unless-stopped
+  app:
+    build: .
     ports:
-      - 5123:5000
-    container_name: csv-builder
-    network_mode: bridge
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm start

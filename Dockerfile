@@ -1,22 +1,22 @@
-FROM node:lts-alpine
+FROM node:18-alpine
 
-# install simple http server for serving static content
-RUN npm install -g http-server
-
-# make the 'app' folder the current working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# copy both 'package.json' and 'package-lock.json' (if available)
-COPY package*.json ./
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json ./
 
-# install project dependencies
+# Install dependencies
 RUN npm install
 
-# copy project files and folders to the current working directory (i.e. 'app' folder)
+# Copy the rest of the application code
 COPY . .
 
-# build app for production with minification
+# Build the application
 RUN npm run build
 
-EXPOSE 5000
-CMD [ "http-server", "dist" ]
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Command to run the application
+CMD ["npm", "start"]
