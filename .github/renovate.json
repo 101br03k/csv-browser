@@ -10,4 +10,7 @@
       "addLabels": ["optional"]
     }
   ]
+  "npm": {
+    "minimumReleaseAge": "7 days"
+  }
 }
