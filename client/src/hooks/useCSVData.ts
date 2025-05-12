@@ -109,6 +109,7 @@ export function useCSVData() {
           toast({
             title: "CSV file loaded successfully",
             description: `Loaded ${parsedData.length} rows and ${headers.length} columns`,
+            duration: 10000, // Auto dismiss after 10 seconds
           });
         },
         error: (error) => {
