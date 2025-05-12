@@ -42,16 +42,44 @@ const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
     VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+>(({ className, variant, children, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       {...props}
-    />
-  )
-})
-Toast.displayName = ToastPrimitives.Root.displayName
+    >
+      <div className="relative w-full">
+        <div className="mb-2">{children}</div>
+        <div className="relative w-full h-1 bg-gray-200">
+          <div
+            className="absolute top-0 left-0 h-full bg-blue-500"
+            style={{ animation: "progress-bar 10s linear forwards" }}
+          ></div>
+        </div>
+      </div>
+    </ToastPrimitives.Root>
+  );
+});
+
+// Add the CSS animation for the progress bar
+const styles = `
+@keyframes progress-bar {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}`;
+
+// Inject the styles into the document
+if (typeof document !== "undefined") {
+  const styleSheet = document.createElement("style");
+  styleSheet.type = "text/css";
+  styleSheet.innerText = styles;
+  document.head.appendChild(styleSheet);
+}
 
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
