@@ -163,7 +163,7 @@ export default function Home() {
       <footer className="bg-white border-t border-gray-200 mt-auto">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            CSV Browser | Made with React
+            <a href="https://github.com/101br03k/csv-browser/">CSV Browser</a> | Made with React
           </p>
         </div>
       </footer>
