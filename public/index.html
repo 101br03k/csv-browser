@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>CSV Browser</title>
+    <meta name="description" content="A powerful CSV Browser that allows you to upload, view, sort, filter, and analyze your CSV data in a user-friendly interface.">
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="CSV Browser - Easy CSV Data Exploration">
+    <meta property="og:description" content="Upload, sort, filter, and analyze your CSV data with our intuitive browser-based CSV Browser.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="/">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233B82F6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /%3E%3C/svg%3E">
+    <link rel="stylesheet" href="index.css">
+    
+  </head>
+  <body>
+    <div class="header">
+      <span class="header-title">
+        <svg width="24" height="24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        CSV Browser
+      </span>
+      <div style="display: flex; gap: 0.5rem;">
+        <button id="downloadBtn" class="download-btn" disabled>Download</button>
+        <button id="uploadAnotherBtn" class="download-btn" style="display:none;">Upload another CSV</button>
+      </div>
+    </div>
+    <div class="card" id="uploadCard">
+      <div id="uploadArea" class="upload-area" tabindex="0">
+        <div style="font-size:2rem; margin-bottom:0.5rem;">⬆️</div>
+        <div>
+          Drag and drop your CSV file here, or click this area to <span id="browseLink" style="color:#3b82f6;cursor:pointer;text-decoration:underline;">browse</span>.
+        </div>
+        <div style="font-size:0.95em; color:#94a3b8; margin-top:0.5em;">Supports CSV files up to 10MB</div>
+        <input id="csvInput" type="file" name="csvfile" accept=".csv" required style="display:none;">
+      </div>
+    </div>
+    <div id="controls-container" class="controls-bar" style="margin-bottom:0;"></div>
+    <div id="table-scroll-wrapper" style="overflow-x:auto; width:100%;">
+      <div id="table-container"></div>
+    </div>
+    <div class="footer">
+      CSV Browser | Made with <span style="color:#3b82f6;">React</span>
+    </div>
+    <script>
+      let columns = [];
+      let colVisibility = {};
+      let rows = [];
+
+      // Drag and drop upload logic
+      const uploadCard = document.getElementById('uploadCard');
+      const uploadArea = document.getElementById('uploadArea');
+      const csvInput = document.getElementById('csvInput');
+      const browseLink = document.getElementById('browseLink');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
+
+      browseLink.onclick = () => csvInput.click();
+
+      // Make the whole drop zone clickable and focusable
+      uploadArea.addEventListener('click', (e) => {
+        // Only trigger if not clicking the file input itself
+        if (e.target === uploadArea) {
+          csvInput.click();
+        }
+      });
+      uploadArea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          csvInput.click();
+        }
+      });
+
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+      });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          csvInput.files = e.dataTransfer.files;
+          handleCSVUpload(csvInput.files[0]);
+        }
+      });
+      csvInput.addEventListener('change', (e) => {
+        if (csvInput.files.length) {
+          handleCSVUpload(csvInput.files[0]);
+        }
+      });
+
+      function handleCSVUpload(file) {
+        const formData = new FormData();
+        formData.append('csvfile', file);
+        fetch('/upload', { method: 'POST', body: formData })
+          .then(res => res.json())
+          .then(data => {
+            rows = data.rows;
+            if (!rows.length) {
+              columns = [];
+              colVisibility = {};
+              renderControls();
+              renderTable();
+              downloadBtn.disabled = true;
+              uploadCard.style.display = '';
+              uploadAnotherBtn.style.display = 'none';
+              return;
+            }
+            columns = Object.keys(rows[0]);
+            colVisibility = {};
+            columns.forEach(col => colVisibility[col] = true);
+            renderControls();
+            renderTable();
+            downloadBtn.disabled = false;
+            uploadCard.style.display = 'none';
+            uploadAnotherBtn.style.display = '';
+          });
+      }
+
+      uploadAnotherBtn.onclick = function() {
+        // Reset state and show upload area again
+        columns = [];
+        colVisibility = {};
+        rows = [];
+        renderControls();
+        renderTable();
+        uploadCard.style.display = '';
+        uploadAnotherBtn.style.display = 'none';
+        downloadBtn.disabled = true;
+        csvInput.value = '';
+      };
+
+      function renderControls() {
+        const container = document.getElementById('controls-container');
+        // Preserve dropdown open state across re-renders
+        const prevDropdown = container.querySelector('.controls-dropdown');
+        const wasOpen = prevDropdown && prevDropdown.classList.contains('open');
+        container.innerHTML = '';
+        if (!columns.length) return;
+
+        // Dropdown menu for column controls
+        const dropdown = document.createElement('div');
+        dropdown.className = 'controls-dropdown';
+        if (wasOpen) dropdown.classList.add('open');
+        const btn = document.createElement('button');
+        btn.className = 'controls-dropdown-btn';
+        btn.textContent = 'Columns & Order';
+        btn.type = 'button';
+
+        // Track open state
+        let isOpen = wasOpen;
+
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          isOpen = !isOpen;
+          if (isOpen) {
+            dropdown.classList.add('open');
+          } else {
+            dropdown.classList.remove('open');
+          }
+        };
+
+        // Only close when clicking outside the dropdown, not when interacting inside
+        document.addEventListener('click', (event) => {
+          if (!dropdown.contains(event.target)) {
+            isOpen = false;
+            dropdown.classList.remove('open');
+          }
+        });
+
+        const content = document.createElement('div');
+        content.className = 'controls-dropdown-content';
+        const list = document.createElement('div');
+        list.className = 'controls-dropdown-list';
+
+        columns.forEach((col, idx) => {
+          const pill = document.createElement('span');
+          pill.className = 'col-pill';
+          // Checkbox
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = colVisibility[col];
+          checkbox.onchange = (e) => {
+            colVisibility[col] = checkbox.checked;
+            renderTable();
+            // Keep dropdown open
+            dropdown.classList.add('open');
+            isOpen = true;
+          };
+          pill.appendChild(checkbox);
+          // Label
+          pill.appendChild(document.createTextNode(' ' + col));
+          // Move Left
+          const leftBtn = document.createElement('button');
+          leftBtn.type = 'button';
+          leftBtn.title = 'Move left';
+          leftBtn.className = 'col-btn';
+          leftBtn.disabled = idx === 0;
+          leftBtn.innerHTML = '←';
+          leftBtn.onclick = (e) => {
+            e.preventDefault();
+            if (idx > 0) {
+              [columns[idx - 1], columns[idx]] = [columns[idx], columns[idx - 1]];
+              // Re-render controls and table, but keep dropdown open
+              renderControls();
+              renderTable();
+              const newDropdown = document.querySelector('.controls-dropdown');
+              if (newDropdown) newDropdown.classList.add('open');
+            }
+          };
+          pill.appendChild(leftBtn);
+          // Move Right
+          const rightBtn = document.createElement('button');
+          rightBtn.type = 'button';
+          rightBtn.title = 'Move right';
+          rightBtn.className = 'col-btn';
+          rightBtn.disabled = idx === columns.length - 1;
+          rightBtn.innerHTML = '→';
+          rightBtn.onclick = (e) => {
+            e.preventDefault();
+            if (idx < columns.length - 1) {
+              [columns[idx + 1], columns[idx]] = [columns[idx], columns[idx + 1]];
+              // Re-render controls and table, but keep dropdown open
+              renderControls();
+              renderTable();
+              const newDropdown = document.querySelector('.controls-dropdown');
+              if (newDropdown) newDropdown.classList.add('open');
+            }
+          };
+          pill.appendChild(rightBtn);
+          list.appendChild(pill);
+        });
+
+        content.appendChild(list);
+        dropdown.appendChild(btn);
+        dropdown.appendChild(content);
+        container.appendChild(dropdown);
+      }
+
+      function renderTable() {
+        const container = document.getElementById('table-container');
+        const scrollWrapper = document.getElementById('table-scroll-wrapper');
+        if (!rows.length) {
+          container.innerHTML = `
+            <div class="table-card">
+              <div class="no-data">
+                <div class="no-data-icon">📄</div>
+                <div style="font-weight:600;font-size:1.1em;">No data to display</div>
+                <div style="font-size:0.98em; margin-top:0.25em;">Upload a CSV file to get started</div>
+              </div>
+            </div>
+          `;
+          scrollWrapper.style.overflowX = 'auto';
+          return;
+        }
+        const visibleCols = columns.filter(col => colVisibility[col]);
+        if (!visibleCols.length) {
+          container.innerHTML = `
+            <div class="table-card">
+              <em>No columns visible</em>
+            </div>
+          `;
+          scrollWrapper.style.overflowX = 'auto';
+          return;
+        }
+        let html = `<div class="table-card" style="padding:0; box-shadow:none; border:none;"><table style="min-width:900px;"><thead><tr>`;
+        visibleCols.forEach(key => {
+          html += `<th>${key}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+        rows.forEach(row => {
+          html += `<tr>`;
+          visibleCols.forEach(col => {
+            html += `<td>${row[col]}</td>`;
+          });
+          html += `</tr>`;
+        });
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        scrollWrapper.style.overflowX = 'auto';
+      }
+
+      // Download CSV logic
+      downloadBtn.onclick = function() {
+        if (!rows.length) return;
+        const visibleCols = columns.filter(col => colVisibility[col]);
+        let csv = visibleCols.join(',') + '\n';
+        rows.forEach(row => {
+          csv += visibleCols.map(col => `"${(row[col] || '').replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'data.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+      };
+    </script>
+  </body>
+</html>

@@ -4,12 +4,9 @@ Run with:
 First:
 ```
 npm install
-````
-then for dev worksss:
 ```
-npm run dev
+then start the server with:
 ```
-or for prod:
+npm start
 ```
-Yea not gonne lie, I dont have that rn. 
-```
+The app will be available at http://localhost:3000
