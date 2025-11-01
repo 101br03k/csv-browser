@@ -30,9 +30,8 @@
       <div id="uploadArea" class="upload-area" tabindex="0">
         <div style="font-size:2rem; margin-bottom:0.5rem;">⬆️</div>
         <div>
-          Drag and drop your CSV file here, or click this area to <span id="browseLink" style="color:#3b82f6;cursor:pointer;text-decoration:underline;">browse</span>.
+    Drag and drop your CSV file here, or click this area to <span id="browseLink" class="browse-link">browse</span>.
         </div>
-        <div style="font-size:0.95em; color:#94a3b8; margin-top:0.5em;">Supports CSV files up to 10MB</div>
         <input id="csvInput" type="file" name="csvfile" accept=".csv" required style="display:none;">
       </div>
     </div>
@@ -41,12 +40,15 @@
       <div id="table-container"></div>
     </div>
     <div class="footer">
-      CSV Browser | Made with <span style="color:#3b82f6;">React</span>
+      <a href="https://github.com/101br03k/csv-browser">CSV Browser</a> | Made with <span style="color:#3b82f6;">React</span>
     </div>
     <script>
       let columns = [];
       let colVisibility = {};
       let rows = [];
+  // Pagination state
+  let rowsPerPage = 10;
+  let currentPage = 1;
 
       // Drag and drop upload logic
       const uploadCard = document.getElementById('uploadCard');
@@ -59,11 +61,9 @@
       browseLink.onclick = () => csvInput.click();
 
       // Make the whole drop zone clickable and focusable
+      // Clicking anywhere inside the uploadArea opens the file browser
       uploadArea.addEventListener('click', (e) => {
-        // Only trigger if not clicking the file input itself
-        if (e.target === uploadArea) {
-          csvInput.click();
-        }
+        csvInput.click();
       });
       uploadArea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -143,7 +143,11 @@
         container.innerHTML = '';
         if (!columns.length) return;
 
-        // Dropdown menu for column controls
+        // Left side controls wrapper (columns dropdown + rows-per-page)
+        const left = document.createElement('div');
+        left.style.display = 'flex';
+        left.style.gap = '0.5rem';
+
         const dropdown = document.createElement('div');
         dropdown.className = 'controls-dropdown';
         if (wasOpen) dropdown.classList.add('open');
@@ -239,7 +243,92 @@
         content.appendChild(list);
         dropdown.appendChild(btn);
         dropdown.appendChild(content);
-        container.appendChild(dropdown);
+        left.appendChild(dropdown);
+
+        // Rows per page selector (simple select inside a styled wrapper)
+        const rppWrapper = document.createElement('div');
+        rppWrapper.className = 'controls-rpp';
+        const rppLabel = document.createElement('label');
+        rppLabel.textContent = 'Rows:';
+        rppLabel.style.marginRight = '0.35rem';
+        rppLabel.style.fontSize = '0.95rem';
+        rppLabel.style.color = '#334155';
+        const rppSelect = document.createElement('select');
+        rppSelect.className = 'rpp-select';
+        [5,10,25,50,100].forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n;
+          opt.textContent = n;
+          if (n === rowsPerPage) opt.selected = true;
+          rppSelect.appendChild(opt);
+        });
+        rppSelect.onchange = (e) => {
+          rowsPerPage = parseInt(rppSelect.value, 10) || 10;
+          currentPage = 1; // reset to first page
+          renderTable();
+        };
+        rppWrapper.appendChild(rppLabel);
+        rppWrapper.appendChild(rppSelect);
+        left.appendChild(rppWrapper);
+
+        // Right side container (pagination controls)
+        const right = document.createElement('div');
+        right.className = 'controls-right';
+        right.style.marginLeft = 'auto';
+        right.style.display = 'flex';
+        right.style.alignItems = 'center';
+        right.style.gap = '0.5rem';
+
+        container.appendChild(left);
+        container.appendChild(right);
+      }
+
+      // Helper to render pagination controls into the .controls-right element
+      function renderPaginationControls(totalRows) {
+        const right = document.querySelector('#controls-container .controls-right');
+        if (!right) return;
+        right.innerHTML = '';
+        const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        if (totalPages <= 1) return;
+
+        // Page info: "Showing X–Y of Z"
+        const startIdx = (currentPage - 1) * rowsPerPage;
+        const endIdx = Math.min(totalRows, startIdx + rowsPerPage);
+        const info = document.createElement('span');
+        info.className = 'page-info';
+        info.textContent = `Showing ${startIdx + 1}–${endIdx} of ${totalRows}`;
+        right.appendChild(info);
+
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'page-btn';
+        prev.textContent = '◀';
+        prev.disabled = currentPage <= 1;
+        prev.onclick = () => { if (currentPage > 1) { currentPage--; renderTable(); } };
+        right.appendChild(prev);
+
+        const pageSelect = document.createElement('select');
+        pageSelect.className = 'page-select';
+        for (let p = 1; p <= totalPages; p++) {
+          const opt = document.createElement('option');
+          opt.value = p;
+          opt.textContent = `Page ${p}`;
+          if (p === currentPage) opt.selected = true;
+          pageSelect.appendChild(opt);
+        }
+        pageSelect.onchange = (e) => {
+          currentPage = parseInt(pageSelect.value, 10) || 1;
+          renderTable();
+        };
+        right.appendChild(pageSelect);
+
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'page-btn';
+        next.textContent = '▶';
+        next.disabled = currentPage >= totalPages;
+        next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTable(); } };
+        right.appendChild(next);
       }
 
       function renderTable() {
@@ -268,12 +357,20 @@
           scrollWrapper.style.overflowX = 'auto';
           return;
         }
+        // Compute pagination
+        const totalRows = rows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        if (currentPage > totalPages) currentPage = totalPages;
+        const startIdx = (currentPage - 1) * rowsPerPage;
+        const endIdx = startIdx + rowsPerPage;
+        const pageRows = rows.slice(startIdx, endIdx);
+
         let html = `<div class="table-card" style="padding:0; box-shadow:none; border:none;"><table style="min-width:900px;"><thead><tr>`;
         visibleCols.forEach(key => {
           html += `<th>${key}</th>`;
         });
         html += `</tr></thead><tbody>`;
-        rows.forEach(row => {
+        pageRows.forEach(row => {
           html += `<tr>`;
           visibleCols.forEach(col => {
             html += `<td>${row[col]}</td>`;
@@ -283,6 +380,8 @@
         html += `</tbody></table></div>`;
         container.innerHTML = html;
         scrollWrapper.style.overflowX = 'auto';
+        // Render pagination controls (if needed)
+        renderPaginationControls(totalRows);
       }
 
       // Download CSV logic
