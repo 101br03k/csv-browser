@@ -30,11 +30,12 @@
       <div id="uploadArea" class="upload-area" tabindex="0">
         <div style="font-size:2rem; margin-bottom:0.5rem;">⬆️</div>
         <div>
-    Drag and drop your CSV file here, or click this area to <span id="browseLink" class="browse-link">browse</span>.
+          Drag and drop your CSV file here, or click this area to <span id="browseLink" class="browse-link">browse</span>.
         </div>
         <input id="csvInput" type="file" name="csvfile" accept=".csv" required style="display:none;">
       </div>
     </div>
+
     <div id="controls-container" class="controls-bar" style="margin-bottom:0;"></div>
     <div id="table-scroll-wrapper" style="overflow-x:auto; width:100%;">
       <div id="table-container"></div>
@@ -46,9 +47,9 @@
       let columns = [];
       let colVisibility = {};
       let rows = [];
-  // Pagination state
-  let rowsPerPage = 10;
-  let currentPage = 1;
+      // Pagination state
+      let rowsPerPage = 10;
+      let currentPage = 1;
 
       // Drag and drop upload logic
       const uploadCard = document.getElementById('uploadCard');
@@ -58,10 +59,25 @@
       const downloadBtn = document.getElementById('downloadBtn');
       const uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
 
+      // Keep track of whether the Columns & Order dropdown should stay open
+      let controlsDropdownOpen = false;
+
+      // Single document click handler: close the dropdown when clicking outside
+      document.addEventListener('click', (event) => {
+        const dropdown = document.querySelector('.controls-dropdown');
+        if (!dropdown) {
+          controlsDropdownOpen = false;
+          return;
+        }
+        if (!dropdown.contains(event.target)) {
+          controlsDropdownOpen = false;
+          dropdown.classList.remove('open');
+        }
+      });
+
       browseLink.onclick = () => csvInput.click();
 
       // Make the whole drop zone clickable and focusable
-      // Clicking anywhere inside the uploadArea opens the file browser
       uploadArea.addEventListener('click', (e) => {
         csvInput.click();
       });
@@ -135,152 +151,157 @@
         csvInput.value = '';
       };
 
+      // Persistent renderControls() (keeps dropdown DOM node)
       function renderControls() {
         const container = document.getElementById('controls-container');
-        // Preserve dropdown open state across re-renders
-        const prevDropdown = container.querySelector('.controls-dropdown');
-        const wasOpen = prevDropdown && prevDropdown.classList.contains('open');
-        container.innerHTML = '';
-        if (!columns.length) return;
+        if (!columns.length) {
+          container.innerHTML = '';
+          return;
+        }
 
-        // Left side controls wrapper (columns dropdown + rows-per-page)
-        const left = document.createElement('div');
-        left.style.display = 'flex';
-        left.style.gap = '0.5rem';
+        // Ensure left and right wrappers exist and are persistent
+        let left = container.querySelector('.controls-left');
+        let right = container.querySelector('.controls-right');
+        if (!left) {
+          left = document.createElement('div');
+          left.className = 'controls-left';
+          left.style.display = 'flex';
+          left.style.gap = '0.5rem';
+          container.appendChild(left);
+        }
+        if (!right) {
+          right = document.createElement('div');
+          right.className = 'controls-right';
+          right.style.marginLeft = 'auto';
+          right.style.display = 'flex';
+          right.style.alignItems = 'center';
+          right.style.gap = '0.5rem';
+          container.appendChild(right);
+        }
 
-        const dropdown = document.createElement('div');
-        dropdown.className = 'controls-dropdown';
-        if (wasOpen) dropdown.classList.add('open');
-        const btn = document.createElement('button');
-        btn.className = 'controls-dropdown-btn';
-        btn.textContent = 'Columns & Order';
-        btn.type = 'button';
+        // Dropdown: create once and then reuse its list element
+        let dropdown = left.querySelector('.controls-dropdown');
+        if (!dropdown) {
+          dropdown = document.createElement('div');
+          dropdown.className = 'controls-dropdown';
 
-        // Track open state
-        let isOpen = wasOpen;
+          const btn = document.createElement('button');
+          btn.className = 'controls-dropdown-btn';
+          btn.textContent = 'Columns & Order';
+          btn.type = 'button';
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            controlsDropdownOpen = !controlsDropdownOpen;
+            dropdown.classList.toggle('open', controlsDropdownOpen);
+          };
 
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          isOpen = !isOpen;
-          if (isOpen) {
-            dropdown.classList.add('open');
-          } else {
-            dropdown.classList.remove('open');
-          }
-        };
+          const content = document.createElement('div');
+          content.className = 'controls-dropdown-content';
+          const list = document.createElement('div');
+          list.className = 'controls-dropdown-list';
+          content.appendChild(list);
 
-        // Only close when clicking outside the dropdown, not when interacting inside
-        document.addEventListener('click', (event) => {
-          if (!dropdown.contains(event.target)) {
-            isOpen = false;
-            dropdown.classList.remove('open');
-          }
-        });
+          dropdown.appendChild(btn);
+          dropdown.appendChild(content);
+          left.appendChild(dropdown);
+        }
 
-        const content = document.createElement('div');
-        content.className = 'controls-dropdown-content';
-        const list = document.createElement('div');
-        list.className = 'controls-dropdown-list';
+        // Apply open state
+        dropdown.classList.toggle('open', controlsDropdownOpen);
 
+        // Update the list of columns (only this node is replaced)
+        const list = dropdown.querySelector('.controls-dropdown-list');
+        list.innerHTML = '';
         columns.forEach((col, idx) => {
           const pill = document.createElement('span');
           pill.className = 'col-pill';
-          // Checkbox
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = colVisibility[col];
+          checkbox.checked = !!colVisibility[col];
           checkbox.onchange = (e) => {
+            e.stopPropagation();
             colVisibility[col] = checkbox.checked;
+            controlsDropdownOpen = true;
+            renderControls();
             renderTable();
-            // Keep dropdown open
-            dropdown.classList.add('open');
-            isOpen = true;
           };
           pill.appendChild(checkbox);
-          // Label
+
           pill.appendChild(document.createTextNode(' ' + col));
-          // Move Left
+
           const leftBtn = document.createElement('button');
           leftBtn.type = 'button';
-          leftBtn.title = 'Move left';
+          leftBtn.title = 'Move up';
+          leftBtn.setAttribute('aria-label', 'Move up');
           leftBtn.className = 'col-btn';
           leftBtn.disabled = idx === 0;
-          leftBtn.innerHTML = '←';
+          leftBtn.innerHTML = '↑';
           leftBtn.onclick = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (idx > 0) {
               [columns[idx - 1], columns[idx]] = [columns[idx], columns[idx - 1]];
-              // Re-render controls and table, but keep dropdown open
+              controlsDropdownOpen = true;
               renderControls();
               renderTable();
-              const newDropdown = document.querySelector('.controls-dropdown');
-              if (newDropdown) newDropdown.classList.add('open');
             }
           };
           pill.appendChild(leftBtn);
-          // Move Right
+
           const rightBtn = document.createElement('button');
           rightBtn.type = 'button';
-          rightBtn.title = 'Move right';
+          rightBtn.title = 'Move down';
+          rightBtn.setAttribute('aria-label', 'Move down');
           rightBtn.className = 'col-btn';
           rightBtn.disabled = idx === columns.length - 1;
-          rightBtn.innerHTML = '→';
+          rightBtn.innerHTML = '↓';
           rightBtn.onclick = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (idx < columns.length - 1) {
               [columns[idx + 1], columns[idx]] = [columns[idx], columns[idx + 1]];
-              // Re-render controls and table, but keep dropdown open
+              controlsDropdownOpen = true;
               renderControls();
               renderTable();
-              const newDropdown = document.querySelector('.controls-dropdown');
-              if (newDropdown) newDropdown.classList.add('open');
             }
           };
           pill.appendChild(rightBtn);
+
           list.appendChild(pill);
         });
 
-        content.appendChild(list);
-        dropdown.appendChild(btn);
-        dropdown.appendChild(content);
-        left.appendChild(dropdown);
-
-        // Rows per page selector (simple select inside a styled wrapper)
-        const rppWrapper = document.createElement('div');
-        rppWrapper.className = 'controls-rpp';
-        const rppLabel = document.createElement('label');
-        rppLabel.textContent = 'Rows:';
-        rppLabel.style.marginRight = '0.35rem';
-        rppLabel.style.fontSize = '0.95rem';
-        rppLabel.style.color = '#334155';
-        const rppSelect = document.createElement('select');
-        rppSelect.className = 'rpp-select';
-        [5,10,25,50,100].forEach(n => {
-          const opt = document.createElement('option');
-          opt.value = n;
-          opt.textContent = n;
-          if (n === rowsPerPage) opt.selected = true;
-          rppSelect.appendChild(opt);
-        });
-        rppSelect.onchange = (e) => {
-          rowsPerPage = parseInt(rppSelect.value, 10) || 10;
-          currentPage = 1; // reset to first page
-          renderTable();
-        };
-        rppWrapper.appendChild(rppLabel);
-        rppWrapper.appendChild(rppSelect);
-        left.appendChild(rppWrapper);
-
-        // Right side container (pagination controls)
-        const right = document.createElement('div');
-        right.className = 'controls-right';
-        right.style.marginLeft = 'auto';
-        right.style.display = 'flex';
-        right.style.alignItems = 'center';
-        right.style.gap = '0.5rem';
-
-        container.appendChild(left);
-        container.appendChild(right);
+        // Rows per page: create or update the select element
+        let rppWrapper = left.querySelector('.controls-rpp');
+        if (!rppWrapper) {
+          rppWrapper = document.createElement('div');
+          rppWrapper.className = 'controls-rpp';
+          const rppLabel = document.createElement('label');
+          rppLabel.textContent = 'Rows:';
+          rppLabel.style.marginRight = '0.35rem';
+          rppLabel.style.fontSize = '0.95rem';
+          rppLabel.style.color = '#334155';
+          const rppSelect = document.createElement('select');
+          rppSelect.className = 'rpp-select';
+          [5,10,25,50,100].forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n;
+            opt.textContent = n;
+            if (n === rowsPerPage) opt.selected = true;
+            rppSelect.appendChild(opt);
+          });
+          rppSelect.onchange = (e) => {
+            rowsPerPage = parseInt(rppSelect.value, 10) || 10;
+            currentPage = 1;
+            renderTable();
+          };
+          rppWrapper.appendChild(rppLabel);
+          rppWrapper.appendChild(rppSelect);
+          left.appendChild(rppWrapper);
+        } else {
+          const rppSelect = rppWrapper.querySelector('.rpp-select');
+          if (rppSelect) rppSelect.value = String(rowsPerPage);
+        }
       }
 
       // Helper to render pagination controls into the .controls-right element
